@@ -7,7 +7,9 @@ cd "$ROOT"
 
 BACKEND_PORT="${BACKEND_PORT:-8000}"
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
-PYTHON_BIN="${PYTHON_BIN:-/opt/anaconda3/bin/python3.12}"
+# Capture PYTHON_BIN from the calling environment *before* .env is loaded,
+# so a stale or unintended value in .env can't silently override it.
+PYTHON_BIN_OVERRIDE="${PYTHON_BIN:-}"
 
 log() { printf '\033[1;36m[start]\033[0m %s\n' "$*"; }
 err() { printf '\033[1;31m[start]\033[0m %s\n' "$*" >&2; }
@@ -44,6 +46,24 @@ while IFS= read -r line || [[ -n "$line" ]]; do
   export "$key=$val"
 done < .env
 
+# Resolve PYTHON_BIN: caller's env wins, then `python3.12` on PATH, then known
+# install locations. This runs after .env so a missing/typo'd PYTHON_BIN in
+# .env doesn't bite us.
+resolve_python_bin() {
+  local candidates=(
+    "$PYTHON_BIN_OVERRIDE"
+    "$(command -v python3.12 2>/dev/null || true)"
+    /opt/homebrew/bin/python3.12
+    /usr/local/bin/python3.12
+    /opt/anaconda3/bin/python3.12
+  )
+  for c in "${candidates[@]}"; do
+    [[ -n "$c" && -x "$c" ]] && { echo "$c"; return; }
+  done
+  return 1
+}
+PYTHON_BIN="$(resolve_python_bin || true)"
+
 # 1. Postgres via Docker
 if command -v docker >/dev/null 2>&1; then
   log "Starting Postgres (docker compose up -d)..."
@@ -66,11 +86,12 @@ fi
 # 2. Backend venv
 cd "$ROOT/backend"
 if [[ ! -d .venv ]]; then
-  log "Creating backend venv with $PYTHON_BIN..."
-  if [[ ! -x "$PYTHON_BIN" ]]; then
-    err "$PYTHON_BIN not found. Set PYTHON_BIN=/path/to/python3.12 and re-run."
+  if [[ -z "$PYTHON_BIN" ]]; then
+    err "No Python 3.12 interpreter found. Tried PATH and /opt/{homebrew,anaconda3}, /usr/local."
+    err "Install Python 3.12 (e.g. 'brew install python@3.12') or set PYTHON_BIN=/path/to/python3.12 and re-run."
     exit 1
   fi
+  log "Creating backend venv with $PYTHON_BIN..."
   "$PYTHON_BIN" -m venv .venv
   # shellcheck disable=SC1091
   source .venv/bin/activate
