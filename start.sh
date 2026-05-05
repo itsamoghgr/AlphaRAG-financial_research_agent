@@ -68,24 +68,29 @@ PYTHON_BIN="$(resolve_python_bin || true)"
 if command -v docker >/dev/null 2>&1; then
   log "Starting Postgres (docker compose up -d)..."
   docker compose up -d
-  # Wait for the *application* role/db to be ready, not just the daemon.
-  # Postgres' built-in pg_isready healthcheck flips to "healthy" as soon as
-  # the server accepts connections — which happens BEFORE the entrypoint's
-  # init scripts have created POSTGRES_USER. So we probe with the real user.
+  # Wait for the *application* role/db to actually exist by running a real
+  # authenticated query. pg_isready is not enough: it returns success as soon
+  # as the daemon accepts connections, which happens BEFORE the entrypoint
+  # init scripts create POSTGRES_USER / POSTGRES_DB.
   PG_USER="${POSTGRES_USER:-alpharag}"
+  PG_PASSWORD="${POSTGRES_PASSWORD:-alpharag}"
   PG_DB="${POSTGRES_DB:-alpharag}"
   log "Waiting for Postgres role '$PG_USER' / db '$PG_DB' to be ready..."
   ready=0
-  for _ in {1..60}; do
-    if docker exec alpharag-postgres pg_isready -U "$PG_USER" -d "$PG_DB" >/dev/null 2>&1; then
+  for i in {1..60}; do
+    if docker exec -e PGPASSWORD="$PG_PASSWORD" alpharag-postgres \
+         psql -U "$PG_USER" -d "$PG_DB" -h 127.0.0.1 -tAc 'select 1' >/dev/null 2>&1; then
       ready=1
+      log "Postgres ready after ${i}s."
       break
     fi
     sleep 1
   done
   if [[ "$ready" -ne 1 ]]; then
-    err "Postgres role/db not ready after 60s. Check 'docker compose logs postgres'."
-    err "If POSTGRES_USER in your .env changed since the volume was created, run: docker compose down -v && ./start.sh"
+    err "Postgres role/db not ready after 60s."
+    err "Container logs (last 30 lines):"
+    docker logs --tail 30 alpharag-postgres >&2 || true
+    err "If POSTGRES_USER/POSTGRES_PASSWORD in .env changed since the volume was created, run: docker compose down -v && ./start.sh"
     exit 1
   fi
 else
