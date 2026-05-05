@@ -31,6 +31,24 @@ See [docs/architecture.md](docs/architecture.md) for diagrams and the full plan.
 cp .env.example .env
 # Edit .env: set OPENAI_API_KEY and SEC_USER_AGENT (must include a real email)
 
+./start.sh
+```
+
+`start.sh` brings up Postgres (via `docker compose`), creates the backend venv on
+first run, installs deps, runs `alembic upgrade head`, then launches the FastAPI
+backend on `:8000` and the Next.js frontend on `:3000`. Press Ctrl-C to stop both.
+
+Overrides (env vars):
+
+- `BACKEND_PORT` / `FRONTEND_PORT` — change ports (defaults: 8000 / 3000)
+- `PYTHON_BIN` — path to a Python 3.12+ interpreter (default: `/opt/anaconda3/bin/python3.12`)
+- `SKIP_DOCKER=1` — skip `docker compose up` if you're running Postgres yourself
+
+Open <http://localhost:3000>.
+
+### Manual (without `start.sh`)
+
+```bash
 # 1. Start Postgres (Docker path)
 docker compose up -d
 
@@ -51,8 +69,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-Open <http://localhost:3000>.
 
 ## Troubleshooting (Python / pip)
 
