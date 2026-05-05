@@ -68,14 +68,24 @@ PYTHON_BIN="$(resolve_python_bin || true)"
 if command -v docker >/dev/null 2>&1; then
   log "Starting Postgres (docker compose up -d)..."
   docker compose up -d
-  log "Waiting for Postgres to be healthy..."
-  for _ in {1..30}; do
-    status="$(docker inspect -f '{{.State.Health.Status}}' alpharag-postgres 2>/dev/null || echo "starting")"
-    [[ "$status" == "healthy" ]] && break
+  # Wait for the *application* role/db to be ready, not just the daemon.
+  # Postgres' built-in pg_isready healthcheck flips to "healthy" as soon as
+  # the server accepts connections — which happens BEFORE the entrypoint's
+  # init scripts have created POSTGRES_USER. So we probe with the real user.
+  PG_USER="${POSTGRES_USER:-alpharag}"
+  PG_DB="${POSTGRES_DB:-alpharag}"
+  log "Waiting for Postgres role '$PG_USER' / db '$PG_DB' to be ready..."
+  ready=0
+  for _ in {1..60}; do
+    if docker exec alpharag-postgres pg_isready -U "$PG_USER" -d "$PG_DB" >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
     sleep 1
   done
-  if [[ "${status:-}" != "healthy" ]]; then
-    err "Postgres did not become healthy in time. Check 'docker compose logs postgres'."
+  if [[ "$ready" -ne 1 ]]; then
+    err "Postgres role/db not ready after 60s. Check 'docker compose logs postgres'."
+    err "If POSTGRES_USER in your .env changed since the volume was created, run: docker compose down -v && ./start.sh"
     exit 1
   fi
 else
