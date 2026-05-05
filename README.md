@@ -36,8 +36,12 @@ docker compose up -d
 
 # 2. Backend
 cd backend
-python3.12 -m venv .venv
+# Use Python 3.12+ (must match `requires-python` in pyproject.toml). If `python3.12`
+# is not found, use the full path to your installer, e.g. Anaconda:
+#   /opt/anaconda3/bin/python3.12 -m venv .venv
+/opt/anaconda3/bin/python3.12 -m venv .venv
 source .venv/bin/activate
+python -m pip install -U pip
 pip install -e ".[dev]"
 alembic upgrade head
 uvicorn alpharag.main:app --reload --port 8000
@@ -49,6 +53,26 @@ npm run dev
 ```
 
 Open <http://localhost:3000>.
+
+## Troubleshooting (Python / pip)
+
+- **`ERROR: Package 'alpharag' requires a different Python: 3.9.x not in '>=3.12'`**  
+  Your venv was created with the system default `python3` (often 3.9). Remove it and recreate with 3.12, for example:
+  ```bash
+  cd backend
+  deactivate 2>/dev/null; rm -rf venv .venv
+  /opt/anaconda3/bin/python3.12 -m venv .venv
+  source .venv/bin/activate
+  python -m pip install -U pip
+  pip install -e ".[dev]"
+  ```
+  Then `which python` should show `…/backend/.venv/bin/python` and `python --version` should report 3.12.x.
+
+- **`zsh: command not found: python3.12`**  
+  `python3.12` may not be on your `PATH`. Use the full interpreter path (Anaconda: `/opt/anaconda3/bin/python3.12`; Homebrew: `$(brew --prefix python@3.12)/bin/python3.12`), or add that `bin` directory to `PATH`.
+
+- **`File "setup.py" or "setup.cfg" not found` when using editable install**  
+  Upgrade pip inside the venv first: `python -m pip install -U pip`, then retry `pip install -e ".[dev]"`.
 
 ## If you don't have Docker
 
