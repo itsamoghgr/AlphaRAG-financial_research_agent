@@ -24,11 +24,25 @@ if [[ ! -f .env ]]; then
   fi
 fi
 
-# Load .env so backend tools (alembic, uvicorn) see the same config
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+# Load .env so backend tools (alembic, uvicorn) see the same config.
+# Parse line-by-line instead of `source` so values with spaces (e.g.
+# SEC_USER_AGENT="AlphaRAG Research email@example.com") don't get interpreted
+# as commands when unquoted.
+while IFS= read -r line || [[ -n "$line" ]]; do
+  # skip blanks and comments
+  [[ -z "${line// /}" || "${line#"${line%%[![:space:]]*}"}" == \#* ]] && continue
+  # strip optional leading "export "
+  line="${line#export }"
+  key="${line%%=*}"
+  val="${line#*=}"
+  # only export if it actually looks like KEY=VALUE
+  [[ "$key" == "$line" ]] && continue
+  # strip one matching pair of surrounding quotes if present
+  if [[ "$val" == \"*\" || "$val" == \'*\' ]]; then
+    val="${val:1:${#val}-2}"
+  fi
+  export "$key=$val"
+done < .env
 
 # 1. Postgres via Docker
 if command -v docker >/dev/null 2>&1; then
