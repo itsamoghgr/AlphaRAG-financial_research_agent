@@ -1,0 +1,145 @@
+# AlphaRAG eval set.
+#
+# Each entry has:
+#   ticker:                Ticker the question is about
+#   question:              The user's question
+#   expected_section_keywords:
+#                          Keywords/phrases that should appear in the title of
+#                          AT LEAST ONE retrieved chunk's section. Used to
+#                          score retrieval recall@k. Case-insensitive substring.
+#   expected_answer_contains:
+#                          Phrases the final answer SHOULD contain (any of).
+#                          Used as a coarse correctness signal in addition to
+#                          the LLM-as-judge score.
+#   form_types:
+#                          Optional whitelist of acceptable form types for the
+#                          retrieved evidence (default: any).
+#
+# Hand-labeled. Calibrated against the 5 demo tickers (AAPL, MSFT, GOOGL,
+# NVDA, TSLA). Five questions each, ranging from factual (MD&A) to
+# qualitative (Risk Factors). Expand here as we add tickers.
+
+- ticker: AAPL
+  question: What does Apple identify as its principal risk factors?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["risk", "supply"]
+
+- ticker: AAPL
+  question: How does Apple describe its business segments?
+  expected_section_keywords: ["Business"]
+  expected_answer_contains: ["iPhone", "Services"]
+
+- ticker: AAPL
+  question: What does management discuss about gross margin trends?
+  expected_section_keywords: ["Management's Discussion", "MD&A"]
+  expected_answer_contains: ["margin"]
+
+- ticker: AAPL
+  question: How does Apple characterize its supply chain concentration?
+  expected_section_keywords: ["Risk Factors", "Business"]
+  expected_answer_contains: ["China", "manufacturer", "manufacturing", "concentrat"]
+
+- ticker: AAPL
+  question: What legal proceedings does Apple disclose?
+  expected_section_keywords: ["Legal Proceedings"]
+  expected_answer_contains: ["proceeding", "litigation"]
+
+- ticker: MSFT
+  question: How does Microsoft describe its AI strategy and investments?
+  expected_section_keywords: ["Business", "Management's Discussion"]
+  expected_answer_contains: ["AI", "artificial intelligence", "Copilot", "OpenAI"]
+
+- ticker: MSFT
+  question: What are the key risks to Microsoft's cloud business?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["cloud", "Azure"]
+
+- ticker: MSFT
+  question: How does Microsoft segment its revenue?
+  expected_section_keywords: ["Business", "Management's Discussion"]
+  expected_answer_contains: ["Productivity", "Intelligent Cloud", "Personal Computing"]
+
+- ticker: MSFT
+  question: What does management say about competition?
+  expected_section_keywords: ["Business", "Risk Factors"]
+  expected_answer_contains: ["compet"]
+
+- ticker: MSFT
+  question: How is Microsoft's cybersecurity risk described?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["cyber", "security", "attack"]
+
+- ticker: GOOGL
+  question: What are Alphabet's reportable segments?
+  expected_section_keywords: ["Business", "Management's Discussion"]
+  expected_answer_contains: ["Search", "YouTube", "Cloud"]
+
+- ticker: GOOGL
+  question: What regulatory risks does Alphabet face?
+  expected_section_keywords: ["Risk Factors", "Legal Proceedings"]
+  expected_answer_contains: ["antitrust", "regulator", "regulation"]
+
+- ticker: GOOGL
+  question: How does Alphabet describe its advertising business?
+  expected_section_keywords: ["Business"]
+  expected_answer_contains: ["advertis"]
+
+- ticker: GOOGL
+  question: What are Alphabet's most significant ongoing legal matters?
+  expected_section_keywords: ["Legal Proceedings"]
+  expected_answer_contains: ["DOJ", "antitrust", "EU", "litigation"]
+
+- ticker: GOOGL
+  question: What does management say about capital expenditures?
+  expected_section_keywords: ["Management's Discussion"]
+  expected_answer_contains: ["capital", "data center", "infrastructure"]
+
+- ticker: NVDA
+  question: What customer concentration risks does NVIDIA face?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["customer", "concentrat"]
+
+- ticker: NVDA
+  question: How does NVIDIA describe its data center segment?
+  expected_section_keywords: ["Business", "Management's Discussion"]
+  expected_answer_contains: ["data center", "Hopper", "Blackwell", "GPU"]
+
+- ticker: NVDA
+  question: What are the key supply chain risks NVIDIA discloses?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["supply", "TSMC", "manufactur"]
+
+- ticker: NVDA
+  question: How does NVIDIA describe export controls?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["export", "China", "control"]
+
+- ticker: NVDA
+  question: What does management say about gross margin?
+  expected_section_keywords: ["Management's Discussion"]
+  expected_answer_contains: ["margin"]
+
+- ticker: TSLA
+  question: What does Tesla say about production capacity and ramp?
+  expected_section_keywords: ["Business", "Management's Discussion"]
+  expected_answer_contains: ["production", "factory", "Gigafactory"]
+
+- ticker: TSLA
+  question: What are the key risk factors for Tesla?
+  expected_section_keywords: ["Risk Factors"]
+  expected_answer_contains: ["risk"]
+
+- ticker: TSLA
+  question: How does Tesla describe its Energy segment?
+  expected_section_keywords: ["Business", "Management's Discussion"]
+  expected_answer_contains: ["energy", "storage", "solar", "Megapack"]
+
+- ticker: TSLA
+  question: What does management discuss about Full Self-Driving?
+  expected_section_keywords: ["Business", "Risk Factors", "Management's Discussion"]
+  expected_answer_contains: ["FSD", "autonomous", "self-driving", "Autopilot"]
+
+- ticker: TSLA
+  question: What legal proceedings does Tesla disclose?
+  expected_section_keywords: ["Legal Proceedings"]
+  expected_answer_contains: ["proceeding", "litigation", "lawsuit"]
