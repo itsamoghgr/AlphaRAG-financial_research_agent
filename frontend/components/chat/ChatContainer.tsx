@@ -38,37 +38,51 @@ export function ChatContainer() {
         }
       : null;
 
-  // When the stream finishes, append the final answer to history.
-  if (
-    state.kind === "done" &&
-    !messages.some((m) => m.id === finalKey(ticker, question, state.answer))
-  ) {
-    const final: ChatMessage = {
-      id: finalKey(ticker, question, state.answer),
-      role: "assistant",
-      ticker,
-      status: "done",
-      answer: state.answer,
-      citations: state.citations,
-      timings_ms: state.timings_ms,
-    };
-    setMessages((m) => [...m, final]);
-    reset();
-  }
-
-  if (state.kind === "error" && !messages.some((m) => m.id === errorKey(state))) {
-    const err: ChatMessage = {
-      id: errorKey(state),
-      role: "assistant",
-      ticker,
-      status: "error",
-      errorCode: state.code,
-      errorMessage: state.message,
-      citations: [],
-    };
-    setMessages((m) => [...m, err]);
-    reset();
-  }
+  // When the stream finishes, append the final answer (or error) to history.
+  // This must run in an effect — calling setState/reset during render would
+  // cause the update to race with React's commit and the answer would
+  // sometimes never appear.
+  useEffect(() => {
+    if (state.kind === "done") {
+      const id = finalKey(ticker, question, state.answer);
+      setMessages((m) =>
+        m.some((x) => x.id === id)
+          ? m
+          : [
+              ...m,
+              {
+                id,
+                role: "assistant",
+                ticker,
+                status: "done",
+                answer: state.answer,
+                citations: state.citations,
+                timings_ms: state.timings_ms,
+              },
+            ],
+      );
+      reset();
+    } else if (state.kind === "error") {
+      const id = errorKey(state);
+      setMessages((m) =>
+        m.some((x) => x.id === id)
+          ? m
+          : [
+              ...m,
+              {
+                id,
+                role: "assistant",
+                ticker,
+                status: "error",
+                errorCode: state.code,
+                errorMessage: state.message,
+                citations: [],
+              },
+            ],
+      );
+      reset();
+    }
+  }, [state, ticker, question, reset]);
 
   const isStreaming = state.kind === "streaming";
 

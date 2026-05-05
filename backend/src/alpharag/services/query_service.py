@@ -15,6 +15,7 @@ Event vocabulary (matches `api/sse.py`):
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -70,21 +71,31 @@ class QueryService:
         t_retrieve_end = t_start
 
         try:
-            # Buffer stage events from the ingestion service so we can both
-            # forward them AND keep the rest of the orchestration sequential.
-            staged_events: list[StageEvent] = []
+            # Run ingestion as a background task and forward stage events live
+            # via a queue, so the SSE stream actually shows progress while the
+            # slow steps (download/embed) are running instead of arriving in a
+            # burst at the very end.
+            queue: asyncio.Queue[StageEvent | None] = asyncio.Queue()
 
             async def progress_cb(stage: str, msg: str, data: dict) -> None:
-                staged_events.append(StageEvent(stage=stage, message=msg, data=data))  # type: ignore[arg-type]
+                await queue.put(StageEvent(stage=stage, message=msg, data=data))  # type: ignore[arg-type]
 
-            ingestion_result = await self._ingestion.ensure_ingested(
-                session,
-                ticker=req.ticker,
-                force_refresh=req.refresh,
-                progress=progress_cb,
+            ingest_task: asyncio.Task = asyncio.create_task(
+                self._ingestion.ensure_ingested(
+                    session,
+                    ticker=req.ticker,
+                    force_refresh=req.refresh,
+                    progress=progress_cb,
+                )
             )
-            for ev in staged_events:
+            ingest_task.add_done_callback(lambda _t: queue.put_nowait(None))
+
+            while True:
+                ev = await queue.get()
+                if ev is None:
+                    break
                 yield ev
+            ingestion_result = await ingest_task
             t_ingest_end = time.monotonic()
 
             # ---- Retrieve ----
