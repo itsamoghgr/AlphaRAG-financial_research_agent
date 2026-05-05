@@ -46,9 +46,9 @@ done < .env
 
 # 1. Postgres via Docker
 if command -v docker >/dev/null 2>&1; then
-  log "Starting Postgres (docker compose up -d)…"
+  log "Starting Postgres (docker compose up -d)..."
   docker compose up -d
-  log "Waiting for Postgres to be healthy…"
+  log "Waiting for Postgres to be healthy..."
   for _ in {1..30}; do
     status="$(docker inspect -f '{{.State.Health.Status}}' alpharag-postgres 2>/dev/null || echo "starting")"
     [[ "$status" == "healthy" ]] && break
@@ -66,7 +66,7 @@ fi
 # 2. Backend venv
 cd "$ROOT/backend"
 if [[ ! -d .venv ]]; then
-  log "Creating backend venv with $PYTHON_BIN…"
+  log "Creating backend venv with $PYTHON_BIN..."
   if [[ ! -x "$PYTHON_BIN" ]]; then
     err "$PYTHON_BIN not found. Set PYTHON_BIN=/path/to/python3.12 and re-run."
     exit 1
@@ -81,13 +81,13 @@ else
   source .venv/bin/activate
 fi
 
-log "Running alembic migrations…"
+log "Running alembic migrations..."
 alembic upgrade head
 
 # 3. Launch backend + frontend, clean up on exit
 PIDS=()
 cleanup() {
-  log "Shutting down…"
+  log "Shutting down..."
   for pid in "${PIDS[@]:-}"; do
     [[ -n "${pid:-}" ]] && kill "$pid" 2>/dev/null || true
   done
@@ -95,17 +95,17 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
-log "Starting backend on http://localhost:${BACKEND_PORT}…"
+log "Starting backend on http://localhost:${BACKEND_PORT}..."
 uvicorn alpharag.main:app --reload --port "$BACKEND_PORT" &
 PIDS+=($!)
 
 cd "$ROOT/frontend"
 if [[ ! -d node_modules ]]; then
-  log "Installing frontend dependencies…"
+  log "Installing frontend dependencies..."
   npm install
 fi
 
-log "Starting frontend on http://localhost:${FRONTEND_PORT}…"
+log "Starting frontend on http://localhost:${FRONTEND_PORT}..."
 PORT="$FRONTEND_PORT" npm run dev &
 PIDS+=($!)
 
