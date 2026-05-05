@@ -163,10 +163,14 @@ class ChunkRepository:
             bindparam("vector_weight"),
             bindparam("fts_weight"),
         )
+        # asyncpg has no built-in codec for pgvector, so the SQL CASTs a text
+        # literal: `CAST(:embedding AS vector)`. Send the embedding as the
+        # pgvector text form ('[0.1,0.2,...]') rather than a Python list.
+        embedding_literal = "[" + ",".join(repr(float(x)) for x in query_embedding) + "]"
         result = await self._session.execute(
             sql,
             {
-                "embedding": query_embedding,
+                "embedding": embedding_literal,
                 "company_id": company_id,
                 "query_text": query_text,
                 "top_k": top_k,
